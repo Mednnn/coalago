@@ -10,7 +10,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	. "github.com/coalalib/coalago"
+	. "github.com/Mednnn/coalago"
 )
 
 var _ = Describe("Message", func() {

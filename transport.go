@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"net"
+	"strconv"
 	"sync"
 	"time"
 
@@ -130,12 +131,18 @@ func (sr *transport) sendCON(message *CoAPMessage) (resp *CoAPMessage, err error
 		}
 
 		if resp.Type == ACK && resp.Code == CoapCodeEmpty {
-			resp, err = sr.receiveARQBlock2(message, nil)
+			log.Debug("TYT")
+			len, err := strconv.Atoi(resp.Payload.String())
+			if err != nil {
+				len = -1
+			}
+
+			resp, err = sr.receiveARQBlock2(message, nil, len)
 			return resp, err
 		}
 
 		if resp.GetBlock2() != nil {
-			resp, err = sr.receiveARQBlock2(message, resp)
+			resp, err = sr.receiveARQBlock2(message, resp, -1)
 			return resp, err
 		}
 
@@ -374,12 +381,14 @@ func (sr *transport) sendPacketsToAddr(packets []*packet, windowsize *int, shift
 }
 
 func (sr *transport) sendARQBlock1CON(message *CoAPMessage) (*CoAPMessage, error) {
+	state := &stateSend{
+		payload:     message.Payload.Bytes(),
+		lenght:      len(message.Payload.Bytes()),
+		origMessage: message,
+		blockSize:   MAX_PAYLOAD_SIZE,
+		windowsize:  DEFAULT_WINDOW_SIZE,
+	}
 
-	state := new(stateSend)
-	state.payload = message.Payload.Bytes()
-	state.lenght = len(state.payload)
-	state.origMessage = message
-	state.blockSize = MAX_PAYLOAD_SIZE
 	numblocks := math.Ceil(float64(state.lenght) / float64(MAX_PAYLOAD_SIZE))
 	if int(numblocks) < DEFAULT_WINDOW_SIZE {
 		state.windowsize = int(numblocks)
@@ -429,11 +438,11 @@ func (sr *transport) sendARQBlock1CON(message *CoAPMessage) (*CoAPMessage, error
 
 		if resp.Type == ACK {
 			if resp.Type == ACK && resp.Code == CoapCodeEmpty {
-				return sr.receiveARQBlock2(message, nil)
+				return sr.receiveARQBlock2(message, nil, -1)
 			}
 
 			if resp.GetBlock2() != nil {
-				return sr.receiveARQBlock2(message, resp)
+				return sr.receiveARQBlock2(message, resp, -1)
 			}
 
 			block := resp.GetBlock1()
@@ -497,11 +506,14 @@ func (sr *transport) sendARQBlock1CON(message *CoAPMessage) (*CoAPMessage, error
 }
 
 func (sr *transport) sendARQBlock2ACK(input chan *CoAPMessage, message *CoAPMessage, addr net.Addr) error {
-	state := new(stateSend)
-	state.payload = message.Payload.Bytes()
-	state.lenght = len(state.payload)
-	state.origMessage = message
-	state.blockSize = MAX_PAYLOAD_SIZE
+	state := &stateSend{
+		payload:     message.Payload.Bytes(),
+		lenght:      len(message.Payload.Bytes()),
+		origMessage: message,
+		blockSize:   MAX_PAYLOAD_SIZE,
+		windowsize:  DEFAULT_WINDOW_SIZE,
+	}
+
 	numblocks := math.Ceil(float64(state.lenght) / float64(MAX_PAYLOAD_SIZE))
 	if int(numblocks) < DEFAULT_WINDOW_SIZE {
 		state.windowsize = int(numblocks)
@@ -512,6 +524,7 @@ func (sr *transport) sendARQBlock2ACK(input chan *CoAPMessage, message *CoAPMess
 	packets := []*packet{}
 
 	emptyAckMessage := newACKEmptyMessage(message, state.windowsize)
+	emptyAckMessage.Payload = NewStringPayload(fmt.Sprint(state.lenght))
 	err := sr.sendToSocketByAddress(emptyAckMessage, addr)
 	if err != nil {
 		return err
@@ -658,9 +671,8 @@ func (sr *transport) receiveARQBlock1(input chan *CoAPMessage) (*CoAPMessage, er
 	}
 }
 
-func (sr *transport) receiveARQBlock2(origMessage *CoAPMessage, inputMessage *CoAPMessage) (rsp *CoAPMessage, err error) {
+func (sr *transport) receiveARQBlock2(origMessage *CoAPMessage, inputMessage *CoAPMessage, totalBlocks int) (rsp *CoAPMessage, err error) {
 	buf := make(map[int][]byte)
-	totalBlocks := -1
 	var attempts int
 
 	if inputMessage != nil {

@@ -3,7 +3,7 @@ package coalago
 import (
 	"time"
 
-	"github.com/coalalib/coalago/session"
+	"github.com/Mednnn/coalago/session"
 	"github.com/patrickmn/go-cache"
 )
 

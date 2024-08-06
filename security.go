@@ -7,7 +7,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/coalalib/coalago/session"
+	"github.com/Mednnn/coalago/session"
 )
 
 func securityOutputLayer(tr *transport, message *CoAPMessage, addr net.Addr) error {

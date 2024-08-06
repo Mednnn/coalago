@@ -14,7 +14,7 @@ COAP diff:
 
 # Installation
 ```
-go get -u github.com/coalalib/coalago
+go get -u github.com/Mednnn/coalago
 ```
 
 
@@ -39,8 +39,8 @@ package main
 import (
 	"fmt"
 	"net"
-	"github.com/coalalib/coalago"
-	"github.com/coalalib/coalago/resource" 
+	"github.com/Mednnn/coalago"
+	"github.com/Mednnn/coalago/resource" 
 )
 
 func main() {
